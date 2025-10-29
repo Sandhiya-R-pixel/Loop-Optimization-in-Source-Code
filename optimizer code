@@ -1,0 +1,68 @@
+def is_invariant(statement, loop_vars):
+    """Check if the statement is independent of loop variables"""
+    for var in loop_vars:
+        if var in statement:
+            return False
+    return True
+
+
+def optimize_loop(code_lines):
+    optimized_code = []
+    invariant_statements = []
+    inside_loop = False
+    loop_vars = []
+
+    for line in code_lines:
+        stripped = line.strip()
+
+        # detect for loop
+        if stripped.startswith("for ") or stripped.startswith("while "):
+            inside_loop = True
+            loop_vars = [stripped.split()[1].split('in')[0]] if "for" in stripped else []
+            optimized_code.append(line)
+            continue
+
+        # inside loop
+        if inside_loop:
+            if stripped == "":  # blank line
+                optimized_code.append(line)
+                continue
+
+            # end of loop detection (simple heuristic)
+            if not line.startswith("    "):  # not indented → outside loop
+                inside_loop = False
+                optimized_code.extend(["    " + s for s in invariant_statements])
+                invariant_statements.clear()
+                optimized_code.append(line)
+                continue
+
+            # check invariant
+            if is_invariant(stripped, loop_vars):
+                invariant_statements.append(stripped)
+            else:
+                optimized_code.append(line)
+
+        else:
+            optimized_code.append(line)
+
+    # move invariant code before loop (if missed)
+    if invariant_statements:
+        optimized_code.extend(["    " + s for s in invariant_statements])
+
+    return optimized_code
+
+
+# ----------- Main Program -----------
+print("Enter your Python code (type 'END' to finish):")
+user_code = []
+while True:
+    line = input()
+    if line.strip().upper() == "END":
+        break
+    user_code.append(line)
+
+optimized = optimize_loop(user_code)
+
+print("\n✅ Optimized Code:\n")
+for line in optimized:
+    print(line)
